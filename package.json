@@ -5,7 +5,7 @@
   "description": "Cross-platform encrypted password vault with pluggable storage providers",
   "main": "dist-electron/main.js",
   "scripts": {
-    "dev": "concurrently -k \"vite --host 127.0.0.1\" \"wait-on http://127.0.0.1:5173 && electron .\"",
+    "dev": "npm run build && concurrently -k \"vite --host 127.0.0.1\" \"wait-on http://127.0.0.1:5173 && electron .\"",
     "build": "tsc -p tsconfig.electron.json && vite build",
     "start": "electron .",
     "dist": "npm run build && electron-builder"
