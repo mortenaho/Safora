@@ -24,8 +24,8 @@ function createWindow(): void {
     }
   });
 
-  if (process.env.VITE_DEV_SERVER_URL) {
-    void window.loadURL(process.env.VITE_DEV_SERVER_URL);
+  if (!app.isPackaged) {
+    void window.loadURL("http://127.0.0.1:5173");
   } else {
     void window.loadFile(path.join(__dirname, "../dist/index.html"));
   }
@@ -54,7 +54,6 @@ ipcMain.handle("vault:write", async (_event, encryptedPayload: string) => {
 });
 
 app.whenReady().then(() => {
-  process.env.VITE_DEV_SERVER_URL = process.env.VITE_DEV_SERVER_URL || "";
   createWindow();
   app.on("activate", () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow();
