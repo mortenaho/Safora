@@ -258,6 +258,39 @@ input:focus, select:focus, textarea:focus { border-color: var(--accent); }
 .fact + .fact::before { margin: 0 7px; color: #5f7368; content: "·"; }
 .fact em { margin-right: 4px; color: var(--muted); font-style: normal; font-size: 10px; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; }
 .badge, .item-row time { color: var(--muted); font-size: 11px; white-space: nowrap; }
+.context-menu {
+  position: fixed;
+  z-index: 40;
+  min-width: 176px;
+  max-width: 260px;
+  padding: 6px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: #16201c;
+  box-shadow: 0 18px 44px rgba(0, 0, 0, 0.45);
+}
+.context-menu p {
+  margin: 4px 8px 6px;
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.context-menu button {
+  display: block;
+  width: 100%;
+  padding: 8px 10px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  text-align: left;
+  font-size: 13px;
+}
+.context-menu button:hover,
+.context-menu button:focus-visible { background: rgba(230, 177, 90, 0.14); color: var(--accent); }
+.context-menu button.copied { color: var(--website); }
+.context-menu button:disabled { opacity: 1; color: var(--muted); cursor: default; }
 .badge { padding: 4px 8px; border-radius: 999px; background: var(--kind-bg); color: var(--kind); font-weight: 700; }
 .empty { padding: 36px 16px; text-align: center; }
 .empty h2 { margin: 0 0 6px; font: 700 18px Manrope, sans-serif; }

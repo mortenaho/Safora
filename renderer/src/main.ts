@@ -100,10 +100,27 @@ function generatePassword(): string {
   const bytes = crypto.getRandomValues(new Uint8Array(24));
   return Array.from(bytes, byte => chars[byte % chars.length]).join("");
 }
+async function writeClipboard(value: string): Promise<void> {
+  try {
+    await navigator.clipboard.writeText(value);
+  } catch {
+    const area = document.createElement("textarea");
+    area.value = value;
+    area.setAttribute("readonly", "");
+    area.style.position = "fixed";
+    area.style.left = "-9999px";
+    document.body.append(area);
+    area.focus();
+    area.select();
+    const copied = document.execCommand("copy");
+    area.remove();
+    if (!copied) throw new Error("Could not copy");
+  }
+}
 async function copyText(value: string, button: HTMLButtonElement): Promise<void> {
   const previous = button.textContent;
   try {
-    await navigator.clipboard.writeText(value);
+    await writeClipboard(value);
     button.textContent = "Copied";
   } catch {
     button.textContent = "Failed";
@@ -158,6 +175,7 @@ async function saveVault(): Promise<void> {
 }
 
 function showUnlock(): void {
+  closeCopyMenu();
   closeModals();
   app.innerHTML = `
     <main class="auth-layout">
@@ -212,7 +230,70 @@ function showUnlock(): void {
   });
 }
 
+function copyActions(entry: VaultEntry): { label: string; value: string }[] {
+  return categoryById(entry.category).fields.flatMap(field => {
+    const value = entry.fields[field.key]?.trim() ?? "";
+    return value ? [{ label: field.label, value }] : [];
+  });
+}
+
+let copyMenu: HTMLElement | null = null;
+
+function closeCopyMenu(): void {
+  copyMenu?.remove();
+  copyMenu = null;
+  document.removeEventListener("pointerdown", dismissCopyMenu, true);
+  document.removeEventListener("keydown", dismissCopyMenuKey);
+  window.removeEventListener("scroll", closeCopyMenu, true);
+  window.removeEventListener("resize", closeCopyMenu);
+}
+
+function dismissCopyMenu(event: Event): void {
+  if (copyMenu && event.target instanceof Node && copyMenu.contains(event.target)) return;
+  closeCopyMenu();
+}
+
+function dismissCopyMenuKey(event: KeyboardEvent): void {
+  if (event.key === "Escape") closeCopyMenu();
+}
+
+function showCopyMenu(entry: VaultEntry, x: number, y: number): void {
+  closeCopyMenu();
+  const actions = copyActions(entry);
+  const menu = document.createElement("div");
+  menu.className = "context-menu";
+  menu.setAttribute("role", "menu");
+  menu.innerHTML = `<p>Copy</p>${actions.length
+    ? actions.map((action, index) => `<button type="button" role="menuitem" data-copy-index="${index}">${escapeHtml(action.label)}</button>`).join("")
+    : `<button type="button" disabled>Nothing to copy</button>`}`;
+  document.body.append(menu);
+  const bounds = menu.getBoundingClientRect();
+  menu.style.left = `${Math.max(8, Math.min(x, window.innerWidth - bounds.width - 8))}px`;
+  menu.style.top = `${Math.max(8, Math.min(y, window.innerHeight - bounds.height - 8))}px`;
+  copyMenu = menu;
+  menu.addEventListener("contextmenu", event => event.preventDefault());
+  menu.querySelectorAll<HTMLButtonElement>("[data-copy-index]").forEach(button => {
+    button.addEventListener("click", async () => {
+      const action = actions[Number(button.dataset.copyIndex)];
+      if (!action) return;
+      try {
+        await writeClipboard(action.value);
+        button.textContent = "Copied";
+        button.classList.add("copied");
+      } catch {
+        button.textContent = "Could not copy";
+      }
+      window.setTimeout(closeCopyMenu, 700);
+    });
+  });
+  document.addEventListener("pointerdown", dismissCopyMenu, true);
+  document.addEventListener("keydown", dismissCopyMenuKey);
+  window.addEventListener("scroll", closeCopyMenu, true);
+  window.addEventListener("resize", closeCopyMenu);
+}
+
 function renderVault(): void {
+  closeCopyMenu();
   if (!vault) return;
   const query = searchText.trim().toLowerCase();
   const active = selectedCategory === "all" ? null : categoryById(selectedCategory);
@@ -277,9 +358,15 @@ function renderVault(): void {
     showUnlock();
   });
   document.querySelectorAll<HTMLButtonElement>("[data-entry]").forEach(button => {
+    const entry = () => vault?.entries.find(item => item.id === button.dataset.entry);
     button.addEventListener("click", () => {
-      const entry = vault?.entries.find(item => item.id === button.dataset.entry);
-      if (entry) showEntryForm(entry);
+      const item = entry();
+      if (item) showEntryForm(item);
+    });
+    button.addEventListener("contextmenu", event => {
+      event.preventDefault();
+      const item = entry();
+      if (item) showCopyMenu(item, event.clientX, event.clientY);
     });
   });
 }
