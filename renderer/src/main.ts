@@ -23,6 +23,12 @@ let selectedCategory = "All items";
 let searchText = "";
 
 const app = document.querySelector<HTMLDivElement>("#app")!;
+import { invoke } from "@tauri-apps/api/core";
+
+const vaultBridge = {
+  readVault: () => invoke<string | null>("read_vault"),
+  writeVault: (contents: string) => invoke<void>("write_vault", { contents })
+};
 
 function escapeHtml(value: string): string {
   return value.replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!);
@@ -79,7 +85,7 @@ function showUnlock(): void {
     const password = input.value;
     button.disabled = true; button.textContent = "Unlocking…"; error.textContent = "";
     try {
-      const raw = await window.moriVault.readVault();
+      const raw = await vaultBridge.readVault();
       if (raw) {
         const result = await decryptVault(raw, password);
         vault = result.data; masterKey = result.key;
@@ -87,7 +93,7 @@ function showUnlock(): void {
         const salt = crypto.getRandomValues(new Uint8Array(16));
         masterKey = await deriveKey(password, salt);
         vault = { schemaVersion: 1, entries: [] };
-        await window.moriVault.writeVault(await encryptVault(vault, masterKey, salt));
+        await vaultBridge.writeVault(await encryptVault(vault, masterKey, salt));
       }
       renderVault();
     } catch {
@@ -99,9 +105,9 @@ function showUnlock(): void {
 }
 async function saveVault(): Promise<void> {
   if (!vault || !masterKey) throw new Error("Vault is locked.");
-  const raw = await window.moriVault.readVault();
+  const raw = await vaultBridge.readVault();
   const salt = raw ? fromBase64((JSON.parse(raw) as EncryptedVault).salt) : crypto.getRandomValues(new Uint8Array(16));
-  await window.moriVault.writeVault(await encryptVault(vault, masterKey, salt));
+  await vaultBridge.writeVault(await encryptVault(vault, masterKey, salt));
 }
 function renderVault(): void {
   if (!vault) return;
