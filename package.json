@@ -2,29 +2,22 @@
   "name": "morivault-desktop",
   "version": "0.1.0",
   "private": true,
-  "description": "Cross-platform encrypted password vault with pluggable storage providers",
-  "main": "dist-electron/main.js",
+  "description": "Cross-platform encrypted password vault built with Tauri, TypeScript, and pluggable cloud storage providers",
   "scripts": {
-    "dev": "npm run build && concurrently -k \"vite --host 127.0.0.1\" \"wait-on http://127.0.0.1:5173 && electron .\"",
-    "build": "tsc -p tsconfig.electron.json && vite build",
-    "start": "electron .",
-    "dist": "npm run build && electron-builder"
+    "dev": "tauri dev",
+    "dev:web": "vite --host 127.0.0.1",
+    "build": "npm run build:web",
+    "build:web": "tsc -p tsconfig.json && vite build",
+    "tauri": "tauri",
+    "dist": "npm run build:web && tauri build"
   },
   "devDependencies": {
+    "@tauri-apps/cli": "^2.5.0",
     "@types/node": "^22.15.0",
-    "concurrently": "^9.1.2",
-    "electron": "^35.1.5",
-    "electron-builder": "^26.0.12",
     "typescript": "^5.8.3",
-    "vite": "^6.2.6",
-    "wait-on": "^8.0.3"
+    "vite": "^6.2.6"
   },
-  "build": {
-    "appId": "ir.mortenaho.morivault",
-    "productName": "MoriVault",
-    "directories": { "output": "release" },
-    "files": ["dist/**/*", "dist-electron/**/*", "package.json"],
-    "linux": { "target": ["AppImage", "deb"], "category": "Utility" },
-    "win": { "target": ["nsis"] }
+  "dependencies": {
+    "@tauri-apps/api": "^2.5.0"
   }
 }
