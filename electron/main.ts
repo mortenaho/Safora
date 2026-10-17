@@ -15,7 +15,7 @@ function createWindow(): void {
     minWidth: 820,
     minHeight: 600,
     backgroundColor: "#0b1020",
-    title: "MoriVault",
+    title: "Safora",
     webPreferences: {
       preload: path.join(__dirname, "preload.js"),
       contextIsolation: true,

@@ -1,6 +1,6 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "MoriVault",
+  "productName": "Safora",
   "version": "0.2.0",
   "identifier": "ir.mortenaho.morivault",
   "build": {
@@ -12,7 +12,7 @@
   "app": {
     "windows": [
       {
-        "title": "MoriVault",
+        "title": "Safora",
         "width": 1180,
         "height": 780,
         "minWidth": 760,

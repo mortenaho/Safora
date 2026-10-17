@@ -1,8 +1,8 @@
 [package]
 name = "morivault"
 version = "0.2.0"
-description = "MoriVault encrypted password vault"
-authors = ["MoriVault"]
+description = "Safora encrypted password vault"
+authors = ["Safora"]
 edition = "2021"
 
 [lib]

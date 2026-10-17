@@ -1,6 +1,6 @@
-# MoriVault Desktop
+# Safora Desktop
 
-MoriVault is a cross-platform encrypted password vault built with **Tauri 2**, TypeScript, and Vite. The frontend stays provider-neutral so cloud-storage integrations can be added without coupling the vault core to a specific provider.
+Safora is a cross-platform encrypted password vault built with **Tauri 2**, TypeScript, and Vite. The frontend stays provider-neutral so cloud-storage integrations can be added without coupling the vault core to a specific provider.
 
 ## Requirements
 

@@ -1,0 +1,105 @@
+name: Release
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.meta.outputs.version }}
+      release_id: ${{ steps.release.outputs.release_id }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Version from major.minor plus this run
+        id: meta
+        run: |
+          version=$(node -p "const parts = require('./src-tauri/tauri.conf.json').version.split('.'); parts[0] + '.' + parts[1] + '.${{ github.run_number }}'")
+          echo "version=${version}" >> "$GITHUB_OUTPUT"
+
+      - name: Create the GitHub release
+        id: release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VERSION: ${{ steps.meta.outputs.version }}
+        run: |
+          printf 'Installers for Safora %s.\n\n- Linux AppImage\n- Linux deb\n- Windows exe\n' "$VERSION" > release-notes.txt
+          gh release create "v${VERSION}" \
+            --target "${GITHUB_SHA}" \
+            --title "Safora v${VERSION}" \
+            --notes-file release-notes.txt
+          echo "release_id=$(gh release view "v${VERSION}" --json databaseId --jq .databaseId)" >> "$GITHUB_OUTPUT"
+
+  build:
+    needs: prepare
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-24.04
+            bundles: appimage,deb
+          - os: windows-latest
+            bundles: nsis
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+
+      - name: Install Linux build packages
+        if: matrix.os == 'ubuntu-24.04'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev build-essential curl wget file libxdo-dev libssl-dev libayatana-appindicator3-dev librsvg2-dev patchelf
+
+      - name: Stamp the release version
+        shell: bash
+        env:
+          VERSION: ${{ needs.prepare.outputs.version }}
+        run: |
+          node <<'NODE'
+          const fs = require("fs");
+          const version = process.env.VERSION;
+          const confPath = "src-tauri/tauri.conf.json";
+          const conf = JSON.parse(fs.readFileSync(confPath, "utf8"));
+          conf.version = version;
+          fs.writeFileSync(confPath, JSON.stringify(conf, null, 2) + "\n");
+          const pkgPath = "package.json";
+          const pkg = JSON.parse(fs.readFileSync(pkgPath, "utf8"));
+          pkg.version = version;
+          fs.writeFileSync(pkgPath, JSON.stringify(pkg, null, 2) + "\n");
+          const cargoPath = "src-tauri/Cargo.toml";
+          const cargo = fs.readFileSync(cargoPath, "utf8").replace(/^version = ".*"$/m, `version = "${version}"`);
+          fs.writeFileSync(cargoPath, cargo);
+          NODE
+
+      - name: Install npm dependencies
+        run: npm ci
+
+      - uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          releaseId: ${{ needs.prepare.outputs.release_id }}
+          tagName: v${{ needs.prepare.outputs.version }}
+          uploadUpdaterJson: false
+          args: --bundles ${{ matrix.bundles }}
