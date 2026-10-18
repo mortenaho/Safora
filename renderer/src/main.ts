@@ -36,7 +36,8 @@ const vaultBridge = {
   readVault: () => invoke<string | null>("read_vault"),
   writeVault: (contents: string, syncFolder: string | null) => invoke<WriteReport>("write_vault", { contents, syncFolder }),
   checkSyncFolder: (folder: string) => invoke<string>("check_sync_folder", { folder }),
-  suggestSyncFolder: (provider: SyncProviderId) => invoke<string | null>("suggest_sync_folder", { provider })
+  suggestSyncFolder: (provider: SyncProviderId) => invoke<string | null>("suggest_sync_folder", { provider }),
+  pickSyncFolder: () => invoke<string | null>("pick_sync_folder")
 };
 
 let vault: VaultData | null = null;
@@ -59,7 +60,7 @@ function icon(id: VaultFilter): string {
   return `<span class="cat-icon">${ICONS[id]}</span>`;
 }
 function logoMark(): string {
-  return `<svg class="logo" viewBox="0 0 48 48" aria-hidden="true"><rect x="1.5" y="1.5" width="45" height="45" rx="14" fill="#1b1713" stroke="#e6b15a" stroke-width="1.6"/><circle cx="16" cy="24" r="5.2" fill="none" stroke="#f3ddb0" stroke-width="1.8"/><circle cx="16" cy="24" r="1.5" fill="#f3ddb0"/><path d="M21.1 24H35" stroke="#f3ddb0" stroke-width="1.8" stroke-linecap="round"/><path d="M29.5 24v4.2M33.4 24v3" stroke="#f3ddb0" stroke-width="1.8" stroke-linecap="round"/></svg>`;
+  return `<svg class="logo" viewBox="0 0 64 64" aria-hidden="true"><rect width="64" height="64" rx="16" fill="#101714"/><circle cx="32" cy="31.6" r="22.6" fill="none" stroke="#e6b15a" stroke-width="1.7"/><path d="M40.6 23.4C40 18.6 36.2 16.4 31.5 16.4 25.2 16.4 21.8 19.6 21.8 23.6 21.8 27.4 25.2 29.2 32 30.8 39 32.5 42.2 34.6 42.2 38.8 42.2 43.6 37.6 46.8 31.5 46.8 25.2 46.8 21.4 43.4 20.8 39.2" fill="none" stroke="#f6edd9" stroke-width="4.35" stroke-linecap="round"/></svg>`;
 }
 function escapeHtml(value: string): string {
   return value.replace(/[&<>"']/g, character => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[character]!);
@@ -400,7 +401,7 @@ function renderSyncPage(): string {
     <header class="topbar">
       <div>
         <h1>Sync</h1>
-        <p class="muted">Choose OneDrive or Google Drive. Only the encrypted vault file is copied there.</p>
+        <p class="muted">Safora copies the encrypted vault into the Google Drive or OneDrive folder already connected on this computer.</p>
       </div>
     </header>
     <div class="sync-grid">
@@ -408,8 +409,11 @@ function renderSyncPage(): string {
     </div>
     <section class="board sync-panel">
       <label for="sync-folder">Cloud folder</label>
-      <input id="sync-folder" spellcheck="false" value="${escapeHtml(vault.sync.folder)}" placeholder="${selected === "google-drive" ? "/home/you/Google Drive" : "/home/you/OneDrive"}" />
-      <p class="muted sync-help">${provider ? `Safora/vault.enc is written inside the ${escapeHtml(provider.label)} folder you choose.` : "Pick a provider, then choose the folder its desktop app already syncs."}</p>
+      <div class="folder-row">
+        <input id="sync-folder" spellcheck="false" value="${escapeHtml(vault.sync.folder)}" placeholder="${selected === "google-drive" ? "Google Drive folder" : "OneDrive folder"}" />
+        <button id="sync-browse" class="secondary" type="button">Choose folder</button>
+      </div>
+      <p class="muted sync-help">${provider ? `Safora/vault.enc is written inside the ${escapeHtml(provider.label)} folder you choose. Connect that account on this computer first.` : "Pick Google Drive or OneDrive, then choose the folder its app syncs."}</p>
       <p id="sync-status" class="sync-status ${syncNotice.includes("failed") ? "warn" : ""}" role="status">${escapeHtml(syncNotice)}</p>
       <div class="sync-actions">
         <button id="sync-clear" class="secondary" type="button">This device only</button>
@@ -432,14 +436,30 @@ async function bindSyncPage(): Promise<void> {
       const input = folderInput();
       const provider = card.dataset.provider;
       if (input && !input.value.trim() && isSyncProvider(provider)) {
+        const missing = provider === "google-drive"
+          ? "Google Drive is not connected on this computer. Connect the account, then choose its folder."
+          : "OneDrive is not connected on this computer. Connect the account, then choose its folder.";
         try {
           const suggested = await vaultBridge.suggestSyncFolder(provider);
           if (suggested && !input.value.trim()) input.value = suggested;
+          else if (status) status.textContent = missing;
         } catch {
-          if (status) status.textContent = "Could not look for a cloud folder.";
+          if (status) status.textContent = missing;
         }
       }
     });
+  });
+  document.querySelector("#sync-browse")?.addEventListener("click", async () => {
+    try {
+      const picked = await vaultBridge.pickSyncFolder();
+      const input = folderInput();
+      if (picked && input) {
+        input.value = picked;
+        if (status) status.textContent = "";
+      }
+    } catch {
+      if (status) status.textContent = "Choose the folder from the Safora desktop app.";
+    }
   });
   document.querySelector("#sync-clear")?.addEventListener("click", async () => {
     if (!vault) return;

@@ -35,25 +35,51 @@ fn read_vault(app: tauri::AppHandle, state: State<'_, VaultPath>) -> Result<Opti
 }
 
 fn home_dir() -> Result<PathBuf, String> {
-    std::env::var_os("HOME")
-        .map(PathBuf::from)
-        .filter(|path| path.is_dir())
-        .ok_or_else(|| "Could not resolve the home directory.".to_string())
+    for key in ["HOME", "USERPROFILE"] {
+        if let Some(value) = std::env::var_os(key) {
+            let path = PathBuf::from(value);
+            if path.is_dir() {
+                return Ok(path);
+            }
+        }
+    }
+    Err("Could not resolve the home directory.".to_string())
 }
 
-fn folder_inside_home(folder: &str) -> Result<PathBuf, String> {
+fn gvfs_root() -> Option<PathBuf> {
+    let runtime = std::env::var_os("XDG_RUNTIME_DIR").map(PathBuf::from)?;
+    let gvfs = runtime.join("gvfs");
+    gvfs.is_dir().then_some(gvfs)
+}
+
+fn path_is_allowed(canonical: &Path) -> bool {
+    if let Ok(home) = home_dir() {
+        if let Ok(home) = home.canonicalize() {
+            if canonical.starts_with(&home) {
+                return true;
+            }
+        }
+    }
+    if let Some(gvfs) = gvfs_root() {
+        if canonical.starts_with(&gvfs) {
+            return true;
+        }
+    }
+    false
+}
+
+fn resolve_sync_folder(folder: &str) -> Result<PathBuf, String> {
     let trimmed = folder.trim();
     if trimmed.is_empty() {
         return Err("Choose a OneDrive or Google Drive folder.".to_string());
     }
-    let home = home_dir()?.canonicalize().map_err(|error| format!("Could not resolve the home directory: {error}"))?;
     let path = PathBuf::from(trimmed);
     if !path.is_dir() {
-        return Err("That folder does not exist.".to_string());
+        return Err("That folder does not exist. Connect Google Drive or OneDrive on this computer, then choose its folder.".to_string());
     }
     let canonical = path.canonicalize().map_err(|error| format!("Could not open that folder: {error}"))?;
-    if !canonical.starts_with(&home) {
-        return Err("Choose a folder inside your home directory.".to_string());
+    if !path_is_allowed(&canonical) {
+        return Err("Choose a folder inside your home directory, or the connected Google Drive or OneDrive folder.".to_string());
     }
     Ok(canonical)
 }
@@ -77,10 +103,13 @@ fn write_private_file(path: &Path, contents: &str) -> Result<(), String> {
     #[cfg(unix)]
     {
         use std::os::unix::fs::PermissionsExt;
-        fs::set_permissions(&temp_path, fs::Permissions::from_mode(0o600))
-            .map_err(|error| format!("Could not secure the sync file: {error}"))?;
+        // Cloud folders often reject permission changes. The file is already encrypted.
+        let _ = fs::set_permissions(&temp_path, fs::Permissions::from_mode(0o600));
     }
-    fs::rename(&temp_path, path).map_err(|error| format!("Could not replace the sync file: {error}"))?;
+    if fs::rename(&temp_path, path).is_err() {
+        fs::copy(&temp_path, path).map_err(|error| format!("Could not replace the sync file: {error}"))?;
+        let _ = fs::remove_file(&temp_path);
+    }
     Ok(())
 }
 
@@ -91,22 +120,52 @@ fn copy_encrypted_vault(contents: &str, folder: &Path) -> Result<(), String> {
 
 #[tauri::command]
 fn check_sync_folder(folder: String) -> Result<String, String> {
-    Ok(folder_inside_home(&folder)?.to_string_lossy().into_owned())
+    Ok(resolve_sync_folder(&folder)?.to_string_lossy().into_owned())
+}
+
+fn first_dir(paths: impl IntoIterator<Item = PathBuf>) -> Option<PathBuf> {
+    paths.into_iter().find(|path| path.is_dir())
+}
+
+fn cloud_mount(provider: &str) -> Option<PathBuf> {
+    let needle = match provider {
+        "google-drive" => "google-drive",
+        "onedrive" => "onedrive",
+        _ => return None,
+    };
+    let root = gvfs_root()?;
+    fs::read_dir(root).ok()?.flatten().map(|entry| entry.path()).find(|path| {
+        path.is_dir() && path.file_name().and_then(|name| name.to_str()).unwrap_or("").to_lowercase().contains(needle)
+    })
 }
 
 #[tauri::command]
 fn suggest_sync_folder(provider: String) -> Option<String> {
+    if let Some(path) = cloud_mount(&provider) {
+        return Some(path.to_string_lossy().into_owned());
+    }
+    if provider == "onedrive" {
+        let from_env = first_dir(["OneDriveCommercial", "OneDriveConsumer", "OneDrive"].into_iter().filter_map(|key| std::env::var_os(key).map(PathBuf::from)));
+        if let Some(path) = from_env {
+            return Some(path.to_string_lossy().into_owned());
+        }
+    }
     let home = home_dir().ok()?;
     let names: &[&str] = match provider.as_str() {
-        "onedrive" => &["OneDrive", "OneDrive - Personal"],
-        "google-drive" => &["Google Drive", "GoogleDrive", "My Drive"],
+        "onedrive" => &["OneDrive", "OneDrive - Personal", "OneDrive - Business"],
+        "google-drive" => &["Google Drive", "GoogleDrive", "My Drive", "Insync"],
         _ => return None,
     };
-    names
-        .iter()
-        .map(|name| home.join(name))
-        .find(|path| path.is_dir())
-        .map(|path| path.to_string_lossy().into_owned())
+    first_dir(names.iter().map(|name| home.join(name))).map(|path| path.to_string_lossy().into_owned())
+}
+
+#[tauri::command]
+fn pick_sync_folder() -> Option<String> {
+    let mut dialog = rfd::FileDialog::new().set_title("Choose the Google Drive or OneDrive folder");
+    if let Ok(home) = home_dir() {
+        dialog = dialog.set_directory(&home);
+    }
+    dialog.pick_folder().map(|path| path.to_string_lossy().into_owned())
 }
 
 #[tauri::command]
@@ -151,7 +210,7 @@ fn write_vault(app: tauri::AppHandle, state: State<'_, VaultPath>, contents: Str
     let Some(folder) = sync_folder.filter(|value| !value.trim().is_empty()) else {
         return Ok(WriteReport { synced: false, message: String::new() });
     };
-    match folder_inside_home(&folder).and_then(|path| copy_encrypted_vault(&contents, &path)) {
+    match resolve_sync_folder(&folder).and_then(|path| copy_encrypted_vault(&contents, &path)) {
         Ok(()) => Ok(WriteReport { synced: true, message: String::new() }),
         Err(error) => Ok(WriteReport {
             synced: false,
@@ -164,7 +223,7 @@ fn write_vault(app: tauri::AppHandle, state: State<'_, VaultPath>, contents: Str
 pub fn run() {
     tauri::Builder::default()
         .manage(VaultPath(Mutex::new(None)))
-        .invoke_handler(tauri::generate_handler![read_vault, write_vault, check_sync_folder, suggest_sync_folder])
+        .invoke_handler(tauri::generate_handler![read_vault, write_vault, check_sync_folder, suggest_sync_folder, pick_sync_folder])
         .run(tauri::generate_context!())
         .expect("error while running Safora");
 }

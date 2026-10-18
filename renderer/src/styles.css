@@ -325,6 +325,9 @@ input:focus, select:focus, textarea:focus { border-color: var(--accent); }
 }
 .sync-mark svg { width: 22px; height: 22px; }
 .sync-panel { margin-top: 14px; padding: 16px 16px 14px; }
+.folder-row { display: flex; gap: 8px; align-items: center; }
+.folder-row input { flex: 1; min-width: 0; }
+.folder-row .secondary { flex: none; padding: 11px 14px; }
 .sync-help { margin-top: 8px; }
 .sync-status { min-height: 18px; margin: 10px 0 0; color: var(--muted); font-size: 12px; }
 .sync-status.warn { color: #ff9b9b; }

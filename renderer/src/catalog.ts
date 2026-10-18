@@ -42,12 +42,12 @@ export const SYNC_PROVIDERS: readonly { id: SyncProviderId; label: string; detai
   {
     id: "onedrive",
     label: "OneDrive",
-    detail: "Copy the encrypted vault into your OneDrive folder."
+    detail: "Copies the encrypted vault into the OneDrive folder on this computer."
   },
   {
     id: "google-drive",
     label: "Google Drive",
-    detail: "Copy the encrypted vault into your Google Drive folder."
+    detail: "Copies the encrypted vault into the Google Drive folder on this computer."
   }
 ];
 
