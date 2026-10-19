@@ -1,4 +1,46 @@
-@import url("https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@600;700&family=DM+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&family=Manrope:wght@600;700;800&display=swap");
+/* Bundled latin subsets (SIL Open Font License). Kept local so startup never waits on the network. */
+@font-face {
+  font-family: "Chakra Petch";
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url("./fonts/chakra-petch-600.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Chakra Petch";
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url("./fonts/chakra-petch-700.woff2") format("woff2");
+}
+@font-face {
+  font-family: "DM Sans";
+  font-style: normal;
+  font-weight: 400 700;
+  font-display: swap;
+  src: url("./fonts/dm-sans-latin.woff2") format("woff2");
+}
+@font-face {
+  font-family: "IBM Plex Mono";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("./fonts/ibm-plex-mono-400.woff2") format("woff2");
+}
+@font-face {
+  font-family: "IBM Plex Mono";
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url("./fonts/ibm-plex-mono-500.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Manrope";
+  font-style: normal;
+  font-weight: 600 800;
+  font-display: swap;
+  src: url("./fonts/manrope-latin.woff2") format("woff2");
+}
 
 :root {
   color-scheme: dark;
@@ -84,42 +126,28 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 .cat-icon { width: 18px; height: 18px; display: grid; color: var(--kind, var(--muted)); }
 .cat-icon svg { width: 18px; height: 18px; }
 
-.auth-layout { min-height: 100vh; display: grid; place-items: center; padding: 32px; }
-.auth-card {
-  width: min(440px, 100%);
-  padding: 36px;
-  border: 1px solid var(--line);
-  border-radius: 24px;
-  background: rgba(16, 23, 20, 0.94);
-  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.35);
+.lock { min-height: 100vh; display: grid; place-items: center; padding: 32px 20px; }
+.lock-form { width: min(340px, 100%); }
+.lock-brand { display: flex; align-items: center; gap: 12px; margin-bottom: 28px; }
+.lock-form .logo { width: 40px; height: 40px; }
+.lock-form h1 { margin: 0; font: 700 28px "Chakra Petch", sans-serif; letter-spacing: 0.04em; }
+.lock-field { position: relative; }
+.lock-field input { padding-right: 72px; }
+.lock-field button {
+  position: absolute;
+  top: 50%;
+  right: 8px;
+  transform: translateY(-50%);
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--muted);
+  padding: 6px 8px;
+  font-size: 12px;
+  font-weight: 700;
 }
-.auth-brand { display: flex; align-items: center; gap: 14px; }
-.auth-brand .logo { width: 58px; height: 58px; }
-.auth-card h1 { margin: 0; font: 700 32px "Chakra Petch", sans-serif; letter-spacing: 0.04em; }
-.auth-card .muted { margin-top: 16px; }
-.auth-card form { margin-top: 18px; }
-.auth-kinds {
-  display: grid;
-  grid-template-columns: repeat(5, 1fr);
-  gap: 6px;
-  margin: 16px 0 0;
-  padding: 0;
-  list-style: none;
-}
-.auth-kinds li {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 5px;
-  min-height: 58px;
-  padding: 8px 4px;
-  border-radius: 12px;
-  background: var(--kind-bg);
-  color: var(--kind);
-  text-align: center;
-}
-.auth-kinds li span:last-child { font-size: 10px; font-weight: 700; line-height: 1.2; }
+.lock-field button:hover { color: var(--text); }
+.lock-form.denied .lock-field input { border-color: #ff9b9b; }
 label { display: block; margin: 0 0 8px; color: #d5e4dc; font-size: 12px; font-weight: 600; }
 input, select, textarea {
   width: 100%;
@@ -426,9 +454,6 @@ textarea.mono { min-height: 96px; font-family: "IBM Plex Mono", ui-monospace, mo
   .kind-strip { grid-template-columns: repeat(3, 1fr); }
   .item-row { grid-template-columns: 36px minmax(0, 1fr); }
   .badge, .item-row time { display: none; }
-}
-@media (max-width: 520px) {
-  .auth-kinds { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 }
 @media (max-width: 760px) {
   body { min-width: 320px; }

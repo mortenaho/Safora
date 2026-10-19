@@ -179,36 +179,36 @@ function showUnlock(): void {
   closeCopyMenu();
   closeModals();
   app.innerHTML = `
-    <main class="auth-layout">
-      <section class="auth-card">
-        <div class="auth-brand">
-          ${logoMark()}
-          <div>
-            <p class="eyebrow">ENCRYPTED LOCALLY</p>
-            <h1>Safora</h1>
-          </div>
-        </div>
-        <p class="muted">Servers, mail, websites, transfers, and databases. Each collection keeps its own fields.</p>
-        <ul class="auth-kinds">
-          ${CATEGORIES.map(category => `<li data-kind="${category.id}">${icon(category.id)}<span>${escapeHtml(category.label)}</span></li>`).join("")}
-        </ul>
-        <form id="unlock-form">
-          <label for="master-password">Master password</label>
+    <main class="lock">
+      <form id="unlock-form" class="lock-form">
+        <div class="lock-brand">${logoMark()}<h1>Safora</h1></div>
+        <label for="master-password">Master password</label>
+        <div class="lock-field">
           <input id="master-password" type="password" autocomplete="current-password" minlength="8" required autofocus placeholder="At least 8 characters" />
-          <p id="auth-error" class="error" role="alert"></p>
-          <button class="primary full" type="submit">Unlock vault</button>
-        </form>
-        <p class="footnote">Your master password is never stored. If you forget it, this vault cannot be decrypted.</p>
-      </section>
+          <button id="toggle-password" type="button" aria-pressed="false" aria-label="Show password">Show</button>
+        </div>
+        <p id="auth-error" class="error" role="alert"></p>
+        <button id="unlock-button" class="primary full" type="submit">Unlock</button>
+      </form>
     </main>`;
+  const input = document.querySelector<HTMLInputElement>("#master-password")!;
+  const toggle = document.querySelector<HTMLButtonElement>("#toggle-password")!;
+  toggle.addEventListener("click", () => {
+    const visible = input.type === "password";
+    input.type = visible ? "text" : "password";
+    toggle.textContent = visible ? "Hide" : "Show";
+    toggle.setAttribute("aria-pressed", String(visible));
+    toggle.setAttribute("aria-label", visible ? "Hide password" : "Show password");
+    input.focus();
+  });
   document.querySelector<HTMLFormElement>("#unlock-form")!.addEventListener("submit", async event => {
     event.preventDefault();
-    const input = document.querySelector<HTMLInputElement>("#master-password")!;
-    const button = document.querySelector<HTMLButtonElement>("#unlock-form button")!;
+    const button = document.querySelector<HTMLButtonElement>("#unlock-button")!;
     const error = document.querySelector<HTMLParagraphElement>("#auth-error")!;
     button.disabled = true;
     button.textContent = "Unlocking…";
     error.textContent = "";
+    event.currentTarget instanceof HTMLFormElement && event.currentTarget.classList.remove("denied");
     try {
       const raw = await vaultBridge.readVault();
       if (raw) {
@@ -223,9 +223,10 @@ function showUnlock(): void {
       }
       renderVault();
     } catch {
-      error.textContent = "Could not unlock the vault. Check your master password.";
+      error.textContent = "Wrong password.";
       button.disabled = false;
-      button.textContent = "Unlock vault";
+      button.form?.classList.add("denied");
+      button.textContent = "Unlock";
       input.focus();
     }
   });
