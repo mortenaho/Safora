@@ -59,10 +59,27 @@ export function isSyncProvider(value: unknown): value is SyncProviderId {
   return value === "onedrive" || value === "google-drive";
 }
 
+export const AUTO_LOCK_MINUTES = [0, 1, 5, 15, 30, 60] as const;
+export type AutoLockMinutes = (typeof AUTO_LOCK_MINUTES)[number];
+
+export function autoLockMinutes(value: unknown): AutoLockMinutes {
+  if (value === undefined || value === null || value === "") return 5;
+  const minutes = typeof value === "number" ? value : Number(value);
+  return (AUTO_LOCK_MINUTES as readonly number[]).includes(minutes) ? (minutes as AutoLockMinutes) : 5;
+}
+
+export function autoLockLabel(minutes: AutoLockMinutes): string {
+  if (minutes === 0) return "Off";
+  if (minutes === 1) return "1 minute";
+  if (minutes === 60) return "1 hour";
+  return `${minutes} minutes`;
+}
+
 export type VaultData = {
   schemaVersion: 2;
   entries: VaultEntry[];
   sync: SyncSettings;
+  autoLockMinutes: AutoLockMinutes;
 };
 
 export const CATEGORIES: readonly CategoryDef[] = [
@@ -337,7 +354,8 @@ function normalizeSync(value: unknown): SyncSettings {
 export function normalizeVault(value: unknown): VaultData {
   if (!isRecord(value) || !Array.isArray(value.entries)) throw new Error("Invalid vault contents.");
   const sync = normalizeSync(value.sync);
-  if (value.schemaVersion === 2) return { schemaVersion: 2, entries: value.entries.map(normalizeEntry), sync };
-  if (value.schemaVersion === 1) return { schemaVersion: 2, entries: value.entries.map(migrateLegacy), sync: emptySync() };
+  const lockAfter = autoLockMinutes(value.autoLockMinutes);
+  if (value.schemaVersion === 2) return { schemaVersion: 2, entries: value.entries.map(normalizeEntry), sync, autoLockMinutes: lockAfter };
+  if (value.schemaVersion === 1) return { schemaVersion: 2, entries: value.entries.map(migrateLegacy), sync: emptySync(), autoLockMinutes: lockAfter };
   throw new Error("Invalid vault contents.");
 }

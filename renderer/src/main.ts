@@ -6,6 +6,9 @@ import {
   blankFields,
   categoryById,
   connectionHint,
+  AUTO_LOCK_MINUTES,
+  autoLockLabel,
+  autoLockMinutes,
   emptySync,
   fieldSummary,
   inputKind,
@@ -25,7 +28,7 @@ import {
 type EncryptedVault = { version: 1; salt: string; iv: string; iterations: number; ciphertext: string };
 type WriteReport = { synced: boolean; message: string };
 type VaultFilter = "all" | CategoryId;
-type AppScreen = "items" | "sync";
+type AppScreen = "items" | "sync" | "settings";
 type Draft = { id?: string; category: CategoryId; title: string; notes: string; fields: Record<string, string> };
 
 const ITERATIONS = 600_000;
@@ -46,6 +49,10 @@ let selectedCategory: VaultFilter = "all";
 let searchText = "";
 let screen: AppScreen = "items";
 let syncNotice = "";
+let settingsNotice = "";
+let lastActivity = Date.now();
+let autoLockTimer: number | null = null;
+let activityGate = false;
 
 const ICONS: Record<VaultFilter, string> = {
   all: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><rect x="4" y="4" width="6.5" height="6.5" rx="1.4"/><rect x="13.5" y="4" width="6.5" height="6.5" rx="1.4"/><rect x="4" y="13.5" width="6.5" height="6.5" rx="1.4"/><rect x="13.5" y="13.5" width="6.5" height="6.5" rx="1.4"/></svg>`,
@@ -175,6 +182,68 @@ async function saveVault(): Promise<void> {
   syncNotice = report.message;
 }
 
+function clearAutoLockTimer(): void {
+  if (autoLockTimer !== null) {
+    window.clearTimeout(autoLockTimer);
+    autoLockTimer = null;
+  }
+}
+
+function idleLimitMs(): number {
+  return (vault?.autoLockMinutes ?? 0) * 60_000;
+}
+
+function lockVault(): void {
+  clearAutoLockTimer();
+  vault = null;
+  masterKey = null;
+  searchText = "";
+  selectedCategory = "all";
+  screen = "items";
+  syncNotice = "";
+  settingsNotice = "";
+  showUnlock();
+}
+
+function scheduleAutoLock(): void {
+  clearAutoLockTimer();
+  const limit = idleLimitMs();
+  if (!vault || !masterKey || limit <= 0) return;
+  const remaining = limit - (Date.now() - lastActivity);
+  if (remaining <= 0) {
+    lockVault();
+    return;
+  }
+  autoLockTimer = window.setTimeout(checkAutoLock, remaining);
+}
+
+function checkAutoLock(): void {
+  if (!vault || !masterKey) return;
+  const limit = idleLimitMs();
+  if (limit <= 0) {
+    clearAutoLockTimer();
+    return;
+  }
+  if (Date.now() - lastActivity >= limit) lockVault();
+  else scheduleAutoLock();
+}
+
+function noteActivity(): void {
+  if (!vault || !masterKey) return;
+  lastActivity = Date.now();
+  if (activityGate) return;
+  activityGate = true;
+  window.setTimeout(() => {
+    activityGate = false;
+    if (vault && masterKey) scheduleAutoLock();
+  }, 1000);
+}
+
+function armAutoLock(): void {
+  lastActivity = Date.now();
+  scheduleAutoLock();
+}
+
 function showUnlock(): void {
   closeCopyMenu();
   closeModals();
@@ -218,9 +287,10 @@ function showUnlock(): void {
       } else {
         const salt = crypto.getRandomValues(new Uint8Array(16));
         masterKey = await deriveKey(input.value, salt);
-        vault = { schemaVersion: 2, entries: [], sync: emptySync() };
+        vault = { schemaVersion: 2, entries: [], sync: emptySync(), autoLockMinutes: 5 };
         await vaultBridge.writeVault(await encryptVault(vault, masterKey, salt), null);
       }
+      armAutoLock();
       renderVault();
     } catch {
       error.textContent = "Wrong password.";
@@ -318,13 +388,14 @@ function renderVault(): void {
           ${CATEGORIES.map(category => `<button class="nav-item ${screen === "items" && selectedCategory === category.id ? "active" : ""}" data-category="${category.id}" data-kind="${category.id}">${icon(category.id)}<span>${escapeHtml(category.label)}</span><span class="count">${countFor(category.id)}</span></button>`).join("")}
         </nav>
         <div class="sidebar-bottom">
+          <button id="settings-button" class="nav-item ${screen === "settings" ? "active" : ""}" type="button" data-kind="all"><span class="cat-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M12 3.2v2.3M12 18.5v2.3M4.9 6.2l1.6 1.6M17.5 16.2l1.6 1.6M3.2 12h2.3M18.5 12h2.3M4.9 17.8l1.6-1.6M17.5 7.8l1.6-1.6"/></svg></span><span>Settings</span></button>
           <button id="sync-button" class="nav-item ${screen === "sync" ? "active" : ""}" type="button" data-kind="all"><span class="cat-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M7 18h10a4 4 0 0 0 .4-8 5.5 5.5 0 0 0-10.6 1.6A3.5 3.5 0 0 0 7 18z"/></svg></span><span>Sync</span><span class="count">${vault.sync.provider ? "On" : "Off"}</span></button>
-          <div class="secure-status"><span class="status-indicator"></span><div><strong>Vault encrypted</strong><small>${vault.sync.provider ? "Cloud copy enabled" : "Stored on this device"}</small></div></div>
+          <div class="secure-status"><span class="status-indicator"></span><div><strong>Vault encrypted</strong><small>${vault.autoLockMinutes ? `Locks after ${autoLockLabel(vault.autoLockMinutes).toLowerCase()} idle` : vault.sync.provider ? "Cloud copy enabled" : "Stored on this device"}</small></div></div>
           <button id="lock-button" class="text-button" type="button">Lock vault</button>
         </div>
       </aside>
       <main class="content">
-        ${screen === "sync" ? renderSyncPage() : renderItemsPage(active, filtered, heading, description, addLabel)}
+        ${screen === "sync" ? renderSyncPage() : screen === "settings" ? renderSettingsPage() : renderItemsPage(active, filtered, heading, description, addLabel)}
       </main>
     </div>`;
   document.querySelectorAll<HTMLButtonElement>("[data-category]").forEach(button => {
@@ -338,7 +409,12 @@ function renderVault(): void {
     screen = "sync";
     renderVault();
   });
+  document.querySelector("#settings-button")?.addEventListener("click", () => {
+    screen = "settings";
+    renderVault();
+  });
   if (screen === "sync") bindSyncPage();
+  if (screen === "settings") bindSettingsPage();
   document.querySelector<HTMLInputElement>("#search")?.addEventListener("input", event => {
     const input = event.target as HTMLInputElement;
     searchText = input.value;
@@ -351,13 +427,7 @@ function renderVault(): void {
   document.querySelector("#add-button")?.addEventListener("click", openAdd);
   document.querySelector("#empty-add")?.addEventListener("click", openAdd);
   document.querySelector("#lock-button")?.addEventListener("click", () => {
-    vault = null;
-    masterKey = null;
-    searchText = "";
-    selectedCategory = "all";
-    screen = "items";
-    syncNotice = "";
-    showUnlock();
+    lockVault();
   });
   document.querySelectorAll<HTMLButtonElement>("[data-entry]").forEach(button => {
     const entry = () => vault?.entries.find(item => item.id === button.dataset.entry);
@@ -392,6 +462,49 @@ function renderItemsPage(active: ReturnType<typeof categoryById> | null, filtere
         ${filtered.length ? filtered.map(renderRow).join("") : `<div class="empty"><h2>No ${escapeHtml(active ? active.noun : "items")} yet</h2><p class="muted">${escapeHtml(active ? active.description : "Choose a collection and add the first record.")}</p><button id="empty-add" class="primary" type="button">${escapeHtml(addLabel)}</button></div>`}
       </div>
     </section>`;
+}
+
+function renderSettingsPage(): string {
+  if (!vault) return "";
+  const selected = vault.autoLockMinutes;
+  return `
+    <header class="topbar">
+      <div>
+        <h1>Settings</h1>
+        <p class="muted">Lock the vault on its own when you step away.</p>
+      </div>
+    </header>
+    <section class="board settings-panel">
+      <label for="auto-lock">Auto-lock</label>
+      <select id="auto-lock">
+        ${AUTO_LOCK_MINUTES.map(minutes => `<option value="${minutes}"${minutes === selected ? " selected" : ""}>${escapeHtml(autoLockLabel(minutes))}</option>`).join("")}
+      </select>
+      <p class="muted settings-help">${selected === 0 ? "The vault stays open until you lock it." : `After ${autoLockLabel(selected).toLowerCase()} without using Safora, it locks and asks for the master password.`}</p>
+      <p id="settings-status" class="sync-status" role="status">${escapeHtml(settingsNotice)}</p>
+    </section>`;
+}
+
+function bindSettingsPage(): void {
+  document.querySelector("#auto-lock")?.addEventListener("change", async event => {
+    if (!vault || !(event.target instanceof HTMLSelectElement)) return;
+    const minutes = autoLockMinutes(Number(event.target.value));
+    const previous = vault.autoLockMinutes;
+    if (minutes === previous) return;
+    vault.autoLockMinutes = minutes;
+    const status = document.querySelector<HTMLParagraphElement>("#settings-status");
+    event.target.disabled = true;
+    try {
+      await saveVault();
+      settingsNotice = minutes === 0 ? "Auto-lock is off." : `Auto-lock set to ${autoLockLabel(minutes).toLowerCase()}.`;
+      armAutoLock();
+      renderVault();
+    } catch {
+      vault.autoLockMinutes = previous;
+      event.target.disabled = false;
+      event.target.value = String(previous);
+      if (status) status.textContent = "Could not save auto-lock.";
+    }
+  });
 }
 
 function renderSyncPage(): string {
@@ -757,5 +870,16 @@ function bindDismiss(overlay: HTMLElement, close: () => void): void {
     if (event.target === overlay) finish();
   });
 }
+
+for (const eventName of ["pointerdown", "pointermove", "keydown", "wheel", "touchstart"] as const) {
+  window.addEventListener(eventName, noteActivity, { capture: true, passive: true });
+}
+window.addEventListener("focus", checkAutoLock);
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState === "visible") checkAutoLock();
+});
+window.setInterval(() => {
+  if (vault && masterKey) checkAutoLock();
+}, 15_000);
 
 showUnlock();
