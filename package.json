@@ -1,5 +1,5 @@
 {
-  "name": "morivault-desktop",
+  "name": "safora",
   "version": "0.1.0",
   "private": true,
   "description": "Cross-platform encrypted password vault built with Tauri, TypeScript, and pluggable cloud storage providers",

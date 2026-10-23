@@ -1,12 +1,12 @@
 [package]
-name = "morivault"
+name = "safora"
 version = "0.2.0"
 description = "Safora encrypted password vault"
 authors = ["Safora"]
 edition = "2021"
 
 [lib]
-name = "morivault_lib"
+name = "safora_lib"
 crate-type = ["staticlib", "cdylib", "rlib"]
 
 [build-dependencies]

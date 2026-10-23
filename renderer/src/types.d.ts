@@ -2,7 +2,7 @@ export {};
 
 declare global {
   interface Window {
-    moriVault: {
+    safora: {
       readVault(): Promise<string | null>;
       writeVault(payload: string): Promise<boolean>;
     };

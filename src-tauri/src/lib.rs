@@ -19,7 +19,23 @@ struct VaultPath(Mutex<Option<PathBuf>>);
 fn vault_file_path(app: &tauri::AppHandle) -> Result<PathBuf, String> {
     let dir = app.path().app_data_dir().map_err(|e| format!("Could not resolve app data directory: {e}"))?;
     fs::create_dir_all(&dir).map_err(|e| format!("Could not create app data directory: {e}"))?;
-    Ok(dir.join("vault.json"))
+    let path = dir.join("vault.json");
+    // The app id used to be ir.mortenaho.morivault. Copy that vault once so the rename does not hide it.
+    if !path.exists() {
+        if let Some(parent) = dir.parent() {
+            let legacy = parent.join("ir.mortenaho.morivault").join("vault.json");
+            if legacy.is_file() {
+                fs::copy(&legacy, &path).map_err(|e| format!("Could not copy the existing vault: {e}"))?;
+                #[cfg(unix)]
+                {
+                    use std::os::unix::fs::PermissionsExt;
+                    fs::set_permissions(&path, fs::Permissions::from_mode(0o600))
+                        .map_err(|e| format!("Could not secure vault file permissions: {e}"))?;
+                }
+            }
+        }
+    }
+    Ok(path)
 }
 
 #[tauri::command]
