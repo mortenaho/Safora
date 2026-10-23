@@ -1,0 +1,222 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#0c1210" />
+    <meta
+      name="description"
+      content="Safora is a desktop password vault. Servers, mail, sites, FTP, and databases stay in one file encrypted on your computer."
+    />
+    <meta property="og:title" content="Safora — encrypted password vault" />
+    <meta
+      property="og:description"
+      content="A desktop vault for the logins on your machines. Sealed locally with AES-256-GCM before the file is written."
+    />
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://mortenaho.github.io/Safora/" />
+    <meta property="og:image" content="https://mortenaho.github.io/Safora/icon.png" />
+    <title>Safora — encrypted password vault</title>
+    <link rel="icon" href="favicon.png" type="image/png" />
+    <link rel="apple-touch-icon" href="icon-128.png" />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <a class="skip" href="#content">Skip to content</a>
+    <header class="bar">
+      <a class="brand" href="#top">
+        <svg class="mark" viewBox="0 0 64 64" aria-hidden="true">
+          <rect width="64" height="64" rx="16" fill="#101714" />
+          <circle cx="32" cy="31.6" r="22.6" fill="none" stroke="#e6b15a" stroke-width="1.7" />
+          <path
+            d="M40.6 23.4C40 18.6 36.2 16.4 31.5 16.4 25.2 16.4 21.8 19.6 21.8 23.6 21.8 27.4 25.2 29.2 32 30.8 39 32.5 42.2 34.6 42.2 38.8 42.2 43.6 37.6 46.8 31.5 46.8 25.2 46.8 21.4 43.4 20.8 39.2"
+            fill="none"
+            stroke="#f6edd9"
+            stroke-width="4.35"
+            stroke-linecap="round"
+          />
+        </svg>
+        <span>Safora</span>
+      </a>
+      <nav class="nav" aria-label="Page">
+        <a href="#collections">Collections</a>
+        <a href="#security">Security</a>
+        <a href="#download">Download</a>
+        <a href="https://github.com/mortenaho/Safora">Source</a>
+      </nav>
+    </header>
+
+    <main id="content">
+      <section class="hero" id="top">
+        <div class="hero-copy">
+          <p class="eyebrow">Desktop vault</p>
+          <h1>One encrypted file for the logins on your machines.</h1>
+          <p class="lede">
+            Safora keeps servers, mailboxes, websites, file transfer, and databases in a vault on your computer.
+            The master password seals that file before anything is written. A synced folder only ever receives the sealed copy.
+          </p>
+          <div class="actions">
+            <a class="primary" href="https://github.com/mortenaho/Safora/releases/latest">Download the latest release</a>
+            <a class="secondary" href="#security">How the file is sealed</a>
+          </div>
+          <dl class="specs">
+            <div>
+              <dt>Cipher</dt>
+              <dd>AES-256-GCM</dd>
+            </div>
+            <div>
+              <dt>Key</dt>
+              <dd>PBKDF2-SHA-256<br />600,000 rounds</dd>
+            </div>
+            <div>
+              <dt>Desktop</dt>
+              <dd>Linux and Windows</dd>
+            </div>
+          </dl>
+        </div>
+
+        <figure class="stage" aria-hidden="true">
+          <div class="window">
+            <aside class="side">
+              <div class="side-brand"><span class="dot"></span> Safora</div>
+              <p class="side-label">Collections</p>
+              <ul class="side-nav">
+                <li class="on" data-kind="all"><span>All</span><b>5</b></li>
+                <li data-kind="server"><span>Server</span><b>1</b></li>
+                <li data-kind="email"><span>Email</span><b>1</b></li>
+                <li data-kind="website"><span>Website</span><b>1</b></li>
+                <li data-kind="ftp"><span>FTP / SFTP</span><b>1</b></li>
+                <li data-kind="database"><span>Database</span><b>1</b></li>
+              </ul>
+              <p class="side-status"><i></i> Vault encrypted</p>
+            </aside>
+            <div class="pane">
+              <div class="pane-head">
+                <div>
+                  <p class="eyebrow">Everything</p>
+                  <h2>Five collections</h2>
+                </div>
+                <span class="search">Search the vault</span>
+              </div>
+              <ul class="rows">
+                <li data-kind="server"><span class="swatch"></span><span><strong>edge-01</strong><small>10.0.0.12 · port 22</small></span><em>Server</em></li>
+                <li data-kind="email"><span class="swatch"></span><span><strong>ops mailbox</strong><small>imap.example.com</small></span><em>Email</em></li>
+                <li data-kind="website"><span class="swatch"></span><span><strong>billing</strong><small>example.com</small></span><em>Website</em></li>
+                <li data-kind="ftp"><span class="swatch"></span><span><strong>assets</strong><small>sftp · /var/www</small></span><em>FTP</em></li>
+                <li data-kind="database"><span class="swatch"></span><span><strong>warehouse</strong><small>PostgreSQL · 5432</small></span><em>Database</em></li>
+              </ul>
+            </div>
+          </div>
+        </figure>
+      </section>
+
+      <section class="band" id="collections">
+        <div class="band-intro">
+          <p class="eyebrow">What it stores</p>
+          <h2>Each collection has the fields that belong to it.</h2>
+          <p>Search covers the name, the notes, and every field. Add, edit, and delete stay inside the unlocked vault.</p>
+        </div>
+        <ol class="ledger">
+          <li data-kind="server">
+            <h3>Server</h3>
+            <p>SSH hosts, admin users, and private keys.</p>
+            <p class="fields">Host · port · username · password · system · private key</p>
+          </li>
+          <li data-kind="email">
+            <h3>Email</h3>
+            <p>Mailbox logins and the IMAP and SMTP servers behind them.</p>
+            <p class="fields">Address · username · password · IMAP · SMTP</p>
+          </li>
+          <li data-kind="website">
+            <h3>Website</h3>
+            <p>Site logins and the address they belong to.</p>
+            <p class="fields">URL · username · password</p>
+          </li>
+          <li data-kind="ftp">
+            <h3>FTP / SFTP</h3>
+            <p>File transfer hosts, the protocol, and the remote path.</p>
+            <p class="fields">SFTP, FTP, or FTPS · host · port · path</p>
+          </li>
+          <li data-kind="database">
+            <h3>Database</h3>
+            <p>Engines, hosts, database names, and accounts.</p>
+            <p class="fields">PostgreSQL, MySQL, MariaDB, SQL Server, MongoDB, Redis, SQLite</p>
+          </li>
+        </ol>
+      </section>
+
+      <section class="band security" id="security">
+        <div class="band-intro">
+          <p class="eyebrow">How it is sealed</p>
+          <h2>The password stays in the app. The disk gets ciphertext.</h2>
+          <p>
+            Safora derives a key with PBKDF2-SHA-256, 600,000 iterations, and encrypts the vault with AES-256-GCM.
+            Rust writes that envelope to the application-data directory, replacing the file atomically and tightening Unix permissions.
+          </p>
+        </div>
+        <ol class="points">
+          <li>
+            <h3>Local first</h3>
+            <p>The vault file is created on this computer. Unlocking it needs the master password you chose. The app cannot recover that password.</p>
+          </li>
+          <li>
+            <h3>Idle lock</h3>
+            <p>Leave Safora unused and it locks itself, then asks for the master password again. You pick the idle time, or turn the lock off.</p>
+          </li>
+          <li>
+            <h3>A sealed cloud copy</h3>
+            <p>
+              Sync does not sign in to Google or Microsoft. It writes <code>Safora/vault.enc</code> into the Google Drive or OneDrive folder already connected on this computer.
+            </p>
+          </li>
+          <li>
+            <h3>Still an early build</h3>
+            <p>Safora has not had a security audit. Do not keep production secrets in it until the implementation has been reviewed and tested. Protect the operating-system account, and keep your own backup of the encrypted file.</p>
+          </li>
+        </ol>
+      </section>
+
+      <section class="band download" id="download">
+        <div class="band-intro">
+          <p class="eyebrow">Install</p>
+          <h2>Linux and Windows builds from the same release.</h2>
+          <p>Each push to <code>main</code> publishes an AppImage, a deb package, and a Windows installer on GitHub Releases.</p>
+        </div>
+        <ul class="platforms">
+          <li>
+            <h3>Linux</h3>
+            <p>AppImage and deb.</p>
+          </li>
+          <li>
+            <h3>Windows</h3>
+            <p>NSIS installer.</p>
+          </li>
+          <li>
+            <h3>Source</h3>
+            <p>Tauri 2, TypeScript, and Rust.</p>
+          </li>
+        </ul>
+        <a class="primary" href="https://github.com/mortenaho/Safora/releases/latest">Open the latest release</a>
+      </section>
+    </main>
+
+    <footer class="colophon">
+      <a class="brand" href="#top">
+        <svg class="mark" viewBox="0 0 64 64" aria-hidden="true">
+          <rect width="64" height="64" rx="16" fill="#101714" />
+          <circle cx="32" cy="31.6" r="22.6" fill="none" stroke="#e6b15a" stroke-width="1.7" />
+          <path
+            d="M40.6 23.4C40 18.6 36.2 16.4 31.5 16.4 25.2 16.4 21.8 19.6 21.8 23.6 21.8 27.4 25.2 29.2 32 30.8 39 32.5 42.2 34.6 42.2 38.8 42.2 43.6 37.6 46.8 31.5 46.8 25.2 46.8 21.4 43.4 20.8 39.2"
+            fill="none"
+            stroke="#f6edd9"
+            stroke-width="4.35"
+            stroke-linecap="round"
+          />
+        </svg>
+        <span>Safora</span>
+      </a>
+      <p>Encrypted password vault. The master password never leaves the application.</p>
+      <a href="https://github.com/mortenaho/Safora">github.com/mortenaho/Safora</a>
+    </footer>
+  </body>
+</html>
