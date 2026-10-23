@@ -1,0 +1,1 @@
+{"default":{"identifier":"default","description":"Default permissions for the Safora main window","local":true,"windows":["main"],"permissions":["core:default"]}}
